@@ -325,6 +325,15 @@ wheels = [
 ]
 
 [[package]]
+name = "click"
+version = "8.5.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/45/37/edbf1b0707709013c0cf2e8317e03d97ed29bf4cac709fe328904ae92a38/click-8.5.1.tar.gz", hash = "sha256:9bbfada76703fd1d784b83eea012e3e8c6a001a876543ef104fa56aaaeb072b4", size = 399151, upload-time = "2026-11-06T17:37:01.021Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/31/7d/164b7ffc8624fe9efb4221bf9af485d5c1e41b9ae118045d2b6dc5457d8b/click-8.5.1-py3-none-any.whl", hash = "sha256:8bb5376d2006950386f8c6427613334a2acadc5f559cb80e638d00b4df957e37", size = 126163, upload-time = "2026-11-06T17:36:59.287Z" },
+]
+
+[[package]]
 name = "cloudpickle"
 version = "3.1.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1824,6 +1833,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/60/d1/38f3a3405989a89ac18390803e70c6ad7c7760da4f9b83cbeca0c44a0c72/python_dotenv-1.2.4-py3-none-any.whl", hash = "sha256:42269a8a5b3fd54ffa6f3d84b18abed50064717576b4ecf03dc4a55d8aa04fdc", size = 23266, upload-time = "2026-10-01T05:36:08.633Z" },
 ]
 
+[package.optional-dependencies]
+cli = [
+    { name = "click" },
+]
+
 [[package]]
 name = "python-json-logger"
 version = "4.2.0"
@@ -2581,7 +2595,7 @@ dependencies = [
     { name = "pygments" },
     { name = "pyparsing" },
     { name = "python-dateutil" },
-    { name = "python-dotenv" },
+    { name = "python-dotenv", extra = ["cli"] },
     { name = "python-json-logger" },
     { name = "pywinpty" },
     { name = "pyyaml" },
@@ -2707,7 +2721,7 @@ requires-dist = [
     { name = "pygments", specifier = "==2.21.0" },
     { name = "pyparsing", specifier = "==3.3.3" },
     { name = "python-dateutil", specifier = "==3.0.0" },
-    { name = "python-dotenv", specifier = "==1.2.4" },
+    { name = "python-dotenv", extras = ["cli"], specifier = "==1.2.4" },
     { name = "python-json-logger", specifier = "==4.2.0" },
     { name = "pywinpty", specifier = "==3.1.0" },
     { name = "pyyaml", specifier = "==6.0.3" },

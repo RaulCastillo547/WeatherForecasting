@@ -629,6 +629,15 @@ wheels = [
 ]
 
 [[package]]
+name = "graphviz"
+version = "0.21"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/b3/3ac91e9be6b761a4b30d66ff165e54439dcd48b83f4e20d644867215f6ca/graphviz-0.21.tar.gz", hash = "sha256:20743e7183be82aaaa8ad6c93f8893c923bd6658a04c32ee115edb3c8a835f78", size = 200434, upload-time = "2025-06-15T09:35:05.824Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/4c/e0ce1ef95d4000ebc1c11801f9b944fa5910ecc15b5e351865763d8657f8/graphviz-0.21-py3-none-any.whl", hash = "sha256:54f33de9f4f911d7e84e4191749cac8cc5653f815b06738c54db9a15ab8b1e42", size = 47300, upload-time = "2025-06-15T09:35:04.433Z" },
+]
+
+[[package]]
 name = "h11"
 version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1848,6 +1857,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pyvers"
+version = "0.2.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/62/21/9daf8da2793d112a04b46ac33ab9046c91b0af8292cd93b3cfdd07ff7169/pyvers-0.2.3.tar.gz", hash = "sha256:c4b81c3a033963245e124cdecb052783c9c4cea3bb08c051833af1c44faa6283", size = 12347, upload-time = "2026-07-09T13:58:07.046Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2d/8d/63787e8feda59d981ebc953b6581ccab3c97cf7bfe0a6a407c07b50fc86c/pyvers-0.2.3-py3-none-any.whl", hash = "sha256:6f5b5612f2f4bd08caa49baa70fc5f875fc7da701a5385c13e244eea6b8114dd", size = 11757, upload-time = "2026-07-09T13:58:06.078Z" },
+]
+
+[[package]]
 name = "pywinpty"
 version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2273,6 +2291,20 @@ wheels = [
 ]
 
 [[package]]
+name = "tensordict"
+version = "0.15.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cloudpickle" },
+    { name = "numpy" },
+    { name = "pyvers" },
+    { name = "torch" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/78/6a/afc9e529c87fc47d6b9d869d7d4906334b4153f75764338158da1f32a1cd/tensordict-0.15.6-py3-none-any.whl", hash = "sha256:fd4dc096ad5f98d9418a90ed572fdb1d1f1f3286c82b7dc138e9a4130a6ba5c3", size = 876045, upload-time = "2026-11-11T21:18:33.021Z" },
+]
+
+[[package]]
 name = "terminado"
 version = "0.18.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2538,6 +2570,7 @@ dependencies = [
     { name = "formulaic" },
     { name = "fqdn" },
     { name = "fsspec" },
+    { name = "graphviz" },
     { name = "h11" },
     { name = "httpcore" },
     { name = "httpx" },
@@ -2616,6 +2649,7 @@ dependencies = [
     { name = "stack-data" },
     { name = "statsmodels" },
     { name = "sympy" },
+    { name = "tensordict" },
     { name = "terminado" },
     { name = "threadpoolctl" },
     { name = "tinycss2" },
@@ -2664,6 +2698,7 @@ requires-dist = [
     { name = "formulaic", specifier = "==1.2.2" },
     { name = "fqdn", specifier = "==1.6.0" },
     { name = "fsspec", specifier = "==2026.9.0" },
+    { name = "graphviz", specifier = ">=0.21" },
     { name = "h11", specifier = "==0.16.0" },
     { name = "httpcore", specifier = "==1.0.9" },
     { name = "httpx", specifier = "==0.28.1" },
@@ -2742,6 +2777,7 @@ requires-dist = [
     { name = "stack-data", specifier = "==0.6.3" },
     { name = "statsmodels", specifier = "==0.15.0" },
     { name = "sympy", specifier = "==1.14.0" },
+    { name = "tensordict", specifier = ">=0.15.6" },
     { name = "terminado", specifier = "==0.18.1" },
     { name = "threadpoolctl", specifier = "==3.7.0" },
     { name = "tinycss2", specifier = "==1.5.1" },

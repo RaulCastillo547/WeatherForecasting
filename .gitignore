@@ -44,3 +44,6 @@ htmlcov/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Project Specific Folders
+/saved_models

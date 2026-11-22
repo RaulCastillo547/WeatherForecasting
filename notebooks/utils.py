@@ -1,26 +1,15 @@
-from IPython.display import display
-
 import numpy as np
-from matplotlib import pyplot as plt
 import pandas as pd
-
-from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
-from sklearn.model_selection import PredefinedSplit, GridSearchCV
-
-from statsmodels.tsa.deterministic import CalendarFourier, DeterministicProcess
 
 from tensordict import TensorDict
 import torch
 import torch.nn as nn
-import torch.optim as optim
 
 from torch.utils.data import Dataset, DataLoader
 
-import xgboost as xgb
-
 import math
-from datetime import timedelta, date
+from datetime import timedelta
 
 # New Metric Functions
 def mean_error(true_y:np.ndarray, pred_y:np.ndarray):
@@ -134,14 +123,6 @@ def linear_ghcnd_dataset(raw_ghcnd):
         "TMAX_lag5", "TMIN_lag5",
         "TMAX_lag6", "TMIN_lag6",
     ]
-    PRCP_FEATURES = [
-        "PRCP_lag1",
-        "PRCP_lag2",
-        "PRCP_lag3",
-        "PRCP_lag4",
-        "PRCP_lag5",
-        "PRCP_lag6",
-    ]
     FOURIER_FEATURES = [
         "FOURIER_SIN", "FOURIER_COS",
         "FOURIER_SIN_lag1", "FOURIER_COS_lag1",
@@ -154,37 +135,31 @@ def linear_ghcnd_dataset(raw_ghcnd):
 
     updated_df["TMAX_lag1"] = updated_df["TMAX"].shift(1)
     updated_df["TMIN_lag1"] = updated_df["TMIN"].shift(1)
-    updated_df["PRCP_lag1"] = updated_df["PRCP"].shift(1)
     updated_df["FOURIER_SIN_lag1"] = updated_df["FOURIER_SIN"].shift(1)
     updated_df["FOURIER_COS_lag1"] = updated_df["FOURIER_COS"].shift(1)
 
     updated_df["TMAX_lag2"] = updated_df["TMAX"].shift(2)
     updated_df["TMIN_lag2"] = updated_df["TMIN"].shift(2)
-    updated_df["PRCP_lag2"] = updated_df["PRCP"].shift(2)
     updated_df["FOURIER_SIN_lag2"] = updated_df["FOURIER_SIN"].shift(2)
     updated_df["FOURIER_COS_lag2"] = updated_df["FOURIER_COS"].shift(2)
 
     updated_df["TMAX_lag3"] = updated_df["TMAX"].shift(3)
     updated_df["TMIN_lag3"] = updated_df["TMIN"].shift(3)
-    updated_df["PRCP_lag3"] = updated_df["PRCP"].shift(3)
     updated_df["FOURIER_SIN_lag3"] = updated_df["FOURIER_SIN"].shift(3)
     updated_df["FOURIER_COS_lag3"] = updated_df["FOURIER_COS"].shift(3)
 
     updated_df["TMAX_lag4"] = updated_df["TMAX"].shift(4)
     updated_df["TMIN_lag4"] = updated_df["TMIN"].shift(4)
-    updated_df["PRCP_lag4"] = updated_df["PRCP"].shift(4)
     updated_df["FOURIER_SIN_lag4"] = updated_df["FOURIER_SIN"].shift(4)
     updated_df["FOURIER_COS_lag4"] = updated_df["FOURIER_COS"].shift(4)
 
     updated_df["TMAX_lag5"] = updated_df["TMAX"].shift(5)
     updated_df["TMIN_lag5"] = updated_df["TMIN"].shift(5)
-    updated_df["PRCP_lag5"] = updated_df["PRCP"].shift(5)
     updated_df["FOURIER_SIN_lag5"] = updated_df["FOURIER_SIN"].shift(5)
     updated_df["FOURIER_COS_lag5"] = updated_df["FOURIER_COS"].shift(5)
 
     updated_df["TMAX_lag6"] = updated_df["TMAX"].shift(6)
     updated_df["TMIN_lag6"] = updated_df["TMIN"].shift(6)
-    updated_df["PRCP_lag6"] = updated_df["PRCP"].shift(6)
     updated_df["FOURIER_SIN_lag6"] = updated_df["FOURIER_SIN"].shift(6)
     updated_df["FOURIER_COS_lag6"] = updated_df["FOURIER_COS"].shift(6)
     
@@ -231,14 +206,7 @@ def xgboost_ghcnd_dataset(raw_ghcnd):
         "TMAX_lag5", "TMIN_lag5",
         "TMAX_lag6", "TMIN_lag6",
     ]
-    PRCP_FEATURES = [
-        "PRCP_lag1",
-        "PRCP_lag2",
-        "PRCP_lag3",
-        "PRCP_lag4",
-        "PRCP_lag5",
-        "PRCP_lag6",
-    ]
+
     FOURIER_FEATURES = [
         "DATE_OF_YEAR",
         "FOURIER_SIN", "FOURIER_COS",
@@ -252,37 +220,31 @@ def xgboost_ghcnd_dataset(raw_ghcnd):
 
     updated_df["TMAX_lag1"] = updated_df["TMAX"].shift(1)
     updated_df["TMIN_lag1"] = updated_df["TMIN"].shift(1)
-    updated_df["PRCP_lag1"] = updated_df["PRCP"].shift(1)
     updated_df["FOURIER_SIN_lag1"] = updated_df["FOURIER_SIN"].shift(1)
     updated_df["FOURIER_COS_lag1"] = updated_df["FOURIER_COS"].shift(1)
 
     updated_df["TMAX_lag2"] = updated_df["TMAX"].shift(2)
     updated_df["TMIN_lag2"] = updated_df["TMIN"].shift(2)
-    updated_df["PRCP_lag2"] = updated_df["PRCP"].shift(2)
     updated_df["FOURIER_SIN_lag2"] = updated_df["FOURIER_SIN"].shift(2)
     updated_df["FOURIER_COS_lag2"] = updated_df["FOURIER_COS"].shift(2)
 
     updated_df["TMAX_lag3"] = updated_df["TMAX"].shift(3)
     updated_df["TMIN_lag3"] = updated_df["TMIN"].shift(3)
-    updated_df["PRCP_lag3"] = updated_df["PRCP"].shift(3)
     updated_df["FOURIER_SIN_lag3"] = updated_df["FOURIER_SIN"].shift(3)
     updated_df["FOURIER_COS_lag3"] = updated_df["FOURIER_COS"].shift(3)
 
     updated_df["TMAX_lag4"] = updated_df["TMAX"].shift(4)
     updated_df["TMIN_lag4"] = updated_df["TMIN"].shift(4)
-    updated_df["PRCP_lag4"] = updated_df["PRCP"].shift(4)
     updated_df["FOURIER_SIN_lag4"] = updated_df["FOURIER_SIN"].shift(4)
     updated_df["FOURIER_COS_lag4"] = updated_df["FOURIER_COS"].shift(4)
 
     updated_df["TMAX_lag5"] = updated_df["TMAX"].shift(5)
     updated_df["TMIN_lag5"] = updated_df["TMIN"].shift(5)
-    updated_df["PRCP_lag5"] = updated_df["PRCP"].shift(5)
     updated_df["FOURIER_SIN_lag5"] = updated_df["FOURIER_SIN"].shift(5)
     updated_df["FOURIER_COS_lag5"] = updated_df["FOURIER_COS"].shift(5)
 
     updated_df["TMAX_lag6"] = updated_df["TMAX"].shift(6)
     updated_df["TMIN_lag6"] = updated_df["TMIN"].shift(6)
-    updated_df["PRCP_lag6"] = updated_df["PRCP"].shift(6)
     updated_df["FOURIER_SIN_lag6"] = updated_df["FOURIER_SIN"].shift(6)
     updated_df["FOURIER_COS_lag6"] = updated_df["FOURIER_COS"].shift(6)
     

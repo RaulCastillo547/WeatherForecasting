@@ -9,7 +9,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
 import math
-from datetime import timedelta
+from datetime import timedelta, date
 
 # New Metric Functions
 def mean_error(true_y:np.ndarray, pred_y:np.ndarray):
@@ -312,6 +312,7 @@ class RNN_GHCND_Dataset(Dataset):
         self.all_lag_features = []
         self.all_current_fourier = []
         self.all_target_temps = []
+        self.all_target_dates = []
 
         for index, curr_date in enumerate(self.processed_df.index[6:], 6):
             self.all_lag_features.append(
@@ -330,10 +331,14 @@ class RNN_GHCND_Dataset(Dataset):
             self.all_target_temps.append(
                 self.processed_df.loc[curr_date, ["TMAX", "TMIN"]].values
             )
+            self.all_target_dates.append(
+                curr_date.date().toordinal()
+            )
 
         self.all_lag_features = np.array(self.all_lag_features)
         self.all_current_fourier = np.array(self.all_current_fourier)
         self.all_target_temps = np.array(self.all_target_temps)
+        self.all_target_dates = np.array(self.all_target_dates)
 
     def __len__(self):
         return len(self.all_lag_features)
@@ -341,9 +346,10 @@ class RNN_GHCND_Dataset(Dataset):
     def __getitem__(self, idx):
         return TensorDict(
             {
-                "lag_features": torch.Tensor(self.all_lag_features[idx]),
-                "fourier": torch.Tensor(self.all_current_fourier[idx]),
-                "target": torch.Tensor(self.all_target_temps[idx])
+                "lag_features": torch.tensor(self.all_lag_features[idx], dtype=torch.float32),
+                "fourier": torch.tensor(self.all_current_fourier[idx], dtype=torch.float32),
+                "target": torch.tensor(self.all_target_temps[idx], dtype=torch.float32),
+                "target_date": torch.tensor(self.all_target_dates[idx], dtype=torch.int32)
             },
             batch_size=[]
         )
@@ -354,6 +360,7 @@ def train_one_epoch(model, loss_fn:nn.Module, device:torch.Device, dataloader:Da
     running_loss = 0
     all_predicted_temps = []
     all_true_temps = []
+    
     for index, batch in enumerate(dataloader):
         batch = batch.to(device)
         
@@ -371,7 +378,7 @@ def train_one_epoch(model, loss_fn:nn.Module, device:torch.Device, dataloader:Da
 
     all_predicted_temps = torch.concat(all_predicted_temps, axis=0).detach().numpy()
     all_true_temps = torch.concat(all_true_temps, axis=0).detach().numpy()
-
+    
     all_predicted_temps = (all_predicted_temps*TRAIN_STD.values) + TRAIN_MEAN.values
     all_true_temps = (all_true_temps*TRAIN_STD.values) + TRAIN_MEAN.values
 
@@ -387,6 +394,7 @@ def evaluate_model(model, loss_fn:nn.Module, device:torch.Device, dataloader:Dat
     total_loss = 0
     all_predicted_temps = []
     all_true_temps = []
+    all_dates = []
 
     with torch.no_grad():
         for index, batch in enumerate(dataloader):
@@ -398,16 +406,22 @@ def evaluate_model(model, loss_fn:nn.Module, device:torch.Device, dataloader:Dat
             total_loss += loss_value.item()*batch.size(0)
             all_predicted_temps.append(temp_predictions)
             all_true_temps.append(batch["target"])
+            all_dates.append(batch["target_date"])
 
     all_predicted_temps = torch.concat(all_predicted_temps, axis=0).detach().numpy()
     all_true_temps = torch.concat(all_true_temps, axis=0).detach().numpy()
+    all_dates = torch.concat(all_dates, axis=0).detach().numpy()
 
     all_predicted_temps = (all_predicted_temps*TRAIN_STD.values) + TRAIN_MEAN.values
     all_true_temps = (all_true_temps*TRAIN_STD.values) + TRAIN_MEAN.values
 
-    return {
+    performance_dataframe = pd.DataFrame(all_predicted_temps, index=all_dates, columns=["predicted_TMAX", "predicted_TMIN"]).join(pd.DataFrame(all_true_temps, index=all_dates, columns=["TMAX", "TMIN"]))
+    performance_dataframe.sort_index(inplace=True)
+    performance_dataframe.index = performance_dataframe.index.map(lambda x: date.fromordinal(x))
+
+    return ({
         "MAE": mean_absolute_error(all_true_temps, all_predicted_temps, multioutput="raw_values"),
         "RMSE": root_mean_squared_error(all_true_temps, all_predicted_temps, multioutput="raw_values"),
         "ME": mean_error(all_true_temps, all_predicted_temps),
         "total_loss": total_loss/len(dataloader.dataset)
-    }
+    }, performance_dataframe)

@@ -431,10 +431,10 @@ def train_lstm(train_dataset):
         }
     
     BATCH_SIZE = 64
-    EPOCHS = 30
+    EPOCHS = 10
 
     RNN_HIDDEN=128
-    NN_HIDDEN=16
+    NN_HIDDEN=32
     LEARNING_RATE=0.001
 
     device = torch.device(torch.accelerator.current_accelerator() if torch.accelerator.is_available() else "cpu")

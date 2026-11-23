@@ -31,11 +31,11 @@ htmlcov/
 *.egg-info/
 
 # Generated logs and model artifacts
-*.log
-/artifacts/
-*.joblib
-*.pkl
-*.pickle
+# *.log
+# /artifacts/
+# *.joblib
+# *.pkl
+# *.pickle
 
 # Machine-specific VS Code settings
 /.vscode/settings.json
@@ -44,6 +44,3 @@ htmlcov/
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Project Specific Folders
-/saved_models

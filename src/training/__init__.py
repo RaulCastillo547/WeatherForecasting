@@ -21,7 +21,7 @@ import math
 import os
 import random
 
-SAVED_MODEL_PATH = r'./saved_models'
+SAVED_MODEL_PATH = r'./artifacts'
 
 # Seed Information
 SEED = 0
@@ -62,8 +62,12 @@ def mean_error(true_y:np.ndarray, pred_y:np.ndarray):
     return (pred_y - true_y).mean(axis=0)
 
 # Dataset Processing
-def get_mean_std_temp(raw_ghcnd):
-    pass
+def persistence_ghcnd_dataset(raw_ghcnd):
+    updated_df = raw_ghcnd.set_index("DATE")[["TMAX", "TMIN"]]
+    updated_df[["TMAX_lag1", "TMIN_lag1"]] = updated_df[["TMAX", "TMIN"]].shift(1)
+    updated_df = updated_df[1:]
+    updated_df.interpolate(method="time", inplace=True)
+    return updated_df
 
 def climatological_ghcnd_dataset(raw_ghcnd):
     updated_df = raw_ghcnd.set_index("DATE")[["TMAX", "TMIN"]]
@@ -291,19 +295,41 @@ class RNN_GHCND_Dataset(Dataset):
         )
 
 # Training Models
+def train_persistence(train_df):
+    tmp_df = train_df.copy(deep=True)
+    predicted_df = tmp_df[["TMAX_lag1", "TMIN_lag1"]].rename(columns={"TMAX_lag1": "TMAX", "TMIN_lag1": "TMIN"})
+
+    mae_scores = list(mean_absolute_error(train_df[["TMAX", "TMIN"]].values, predicted_df.values, multioutput="raw_values"))
+    rmse_scores = list(root_mean_squared_error(train_df[["TMAX", "TMIN"]].values, predicted_df.values, multioutput="raw_values"))
+    me_scores = list(mean_error(train_df[["TMAX", "TMIN"]].values, predicted_df.values))
+
+    final_metrics = {
+        'MAE': {"TMAX": mae_scores[0], "TMIN": mae_scores[1]},
+        'RMSE': {"TMAX": rmse_scores[0], "TMIN": rmse_scores[1]},
+        'ME': {"TMAX": me_scores[0], "TMIN": me_scores[1]},
+    }
+
+    return final_metrics
+
+
 def train_climatological(train_df):
     tmp_df = train_df.copy(deep=True)
     tmp_df["DATE_OF_YEAR"] = train_df.index.strftime('%j').astype(int)
     climatological_model = tmp_df.groupby(by="DATE_OF_YEAR")[["TMAX", "TMIN"]].mean()
 
-    climatological_model.to_csv(os.path.join(SAVED_MODEL_PATH, r'climatological_model.csv'))
+    os.makedirs(os.path.join(SAVED_MODEL_PATH, 'climatological'), exist_ok=True)
+    climatological_model.to_csv(os.path.join(SAVED_MODEL_PATH, 'climatological', r'climatological_model.csv'))
 
     predicted_df = tmp_df[["DATE_OF_YEAR"]].join(climatological_model, on="DATE_OF_YEAR")[["TMAX", "TMIN"]]
 
+    mae_scores = list(mean_absolute_error(train_df.values, predicted_df.values, multioutput="raw_values"))
+    rmse_scores = list(root_mean_squared_error(train_df.values, predicted_df.values, multioutput="raw_values"))
+    me_scores = list(mean_error(train_df.values, predicted_df.values))
+
     final_metrics = {
-        'MAE': mean_absolute_error(train_df.values, predicted_df.values, multioutput="raw_values"),
-        'RMSE': root_mean_squared_error(train_df.values, predicted_df.values, multioutput="raw_values"),
-        'ME': mean_error(train_df.values, predicted_df.values),
+        'MAE': {"TMAX": mae_scores[0], "TMIN": mae_scores[1]},
+        'RMSE': {"TMAX": rmse_scores[0], "TMIN": rmse_scores[1]},
+        'ME': {"TMAX": me_scores[0], "TMIN": me_scores[1]},
     }
 
     return final_metrics
@@ -320,17 +346,22 @@ def train_linear(train_df):
         'targets': ["TMAX", "TMIN"],
     }
 
-    joblib.dump(artifact, os.path.join(SAVED_MODEL_PATH, r'linear_model.joblib'))
+    os.makedirs(os.path.join(SAVED_MODEL_PATH, 'linear'), exist_ok=True)
+    joblib.dump(artifact, os.path.join(SAVED_MODEL_PATH, 'linear', r'linear_model.joblib'))
     
     linear_normalized_predictions = linear_model.predict(linear_train_X)
 
     linear_unnormalized_predictions = linear_normalized_predictions*STD_TEMP.values + MEAN_TEMP.values
     linear_unnormalized_y = linear_train_y*STD_TEMP.values + MEAN_TEMP.values
 
+    mae_scores = list(mean_absolute_error(linear_unnormalized_y, linear_unnormalized_predictions, multioutput="raw_values"))
+    rmse_scores = list(root_mean_squared_error(linear_unnormalized_y, linear_unnormalized_predictions, multioutput="raw_values"))
+    me_scores = list(mean_error(linear_unnormalized_y, linear_unnormalized_predictions))
+
     final_metrics = {
-        'MAE': mean_absolute_error(linear_unnormalized_y, linear_unnormalized_predictions, multioutput="raw_values"),
-        'RMSE': root_mean_squared_error(linear_unnormalized_y, linear_unnormalized_predictions, multioutput="raw_values"),
-        'ME': mean_error(linear_unnormalized_y, linear_unnormalized_predictions),
+        'MAE': {"TMAX": mae_scores[0], "TMIN": mae_scores[1]},
+        'RMSE': {"TMAX": rmse_scores[0], "TMIN": rmse_scores[1]},
+        'ME': {"TMAX": me_scores[0], "TMIN": me_scores[1]},
     }
 
     return final_metrics
@@ -351,16 +382,21 @@ def train_xgboost(train_df):
     xgboost_model = xgb.XGBRegressor(**MODEL_PARAMS)
     xgboost_model.fit(xgboost_train_X, xgboost_train_y)
 
-    xgboost_model.save_model(os.path.join(SAVED_MODEL_PATH, 'xgbregressor_model.json'))
+    os.makedirs(os.path.join(SAVED_MODEL_PATH, 'xgboost'), exist_ok=True)
+    xgboost_model.save_model(os.path.join(SAVED_MODEL_PATH, 'xgboost', 'xgbregressor_model.json'))
 
     xgboost_normalized_predictions = xgboost_model.predict(xgboost_train_X)
     xgboost_unnormalized_predictions = xgboost_normalized_predictions*STD_TEMP.values + MEAN_TEMP.values
     xgboost_unnormalized_y = xgboost_train_y*STD_TEMP.values + MEAN_TEMP.values
 
+    mae_scores = list(mean_absolute_error(xgboost_unnormalized_y.values, xgboost_unnormalized_predictions, multioutput="raw_values"))
+    rmse_scores = list(root_mean_squared_error(xgboost_unnormalized_y.values, xgboost_unnormalized_predictions, multioutput="raw_values"))
+    me_scores = list(mean_error(xgboost_unnormalized_y.values, xgboost_unnormalized_predictions))
+
     final_metrics = {
-        'MAE': mean_absolute_error(xgboost_unnormalized_y.values, xgboost_unnormalized_predictions, multioutput="raw_values"),
-        'RMSE': root_mean_squared_error(xgboost_unnormalized_y.values, xgboost_unnormalized_predictions, multioutput="raw_values"),
-        'ME': mean_error(xgboost_unnormalized_y.values, xgboost_unnormalized_predictions),
+        'MAE': {"TMAX": mae_scores[0], "TMIN": mae_scores[1]},
+        'RMSE': {"TMAX": rmse_scores[0], "TMIN": rmse_scores[1]},
+        'ME': {"TMAX": me_scores[0], "TMIN": me_scores[1]},
     }
     
     return final_metrics
@@ -394,10 +430,10 @@ def train_lstm(train_dataset):
         all_true_temps = (all_true_temps*STD_TEMP.values) + MEAN_TEMP.values
 
         return {
-            "MAE": mean_absolute_error(all_true_temps, all_predicted_temps, multioutput="raw_values"),
-            "RMSE": root_mean_squared_error(all_true_temps, all_predicted_temps, multioutput="raw_values"),
-            "ME": mean_error(all_true_temps, all_predicted_temps),
-            "running_loss": running_loss/len(dataloader.dataset)
+            "MAE": list(mean_absolute_error(all_true_temps, all_predicted_temps, multioutput="raw_values")),
+            "RMSE": list(root_mean_squared_error(all_true_temps, all_predicted_temps, multioutput="raw_values")),
+            "ME": list(mean_error(all_true_temps, all_predicted_temps)),
+            "running_loss": float(running_loss/len(dataloader.dataset))
         }
 
     def evaluate_model(model, loss_fn:nn.Module, device:torch.Device, dataloader:DataLoader):
@@ -423,15 +459,20 @@ def train_lstm(train_dataset):
         all_predicted_temps = (all_predicted_temps*STD_TEMP.values) + MEAN_TEMP.values
         all_true_temps = (all_true_temps*STD_TEMP.values) + MEAN_TEMP.values
 
-        return {
-            "MAE": mean_absolute_error(all_true_temps, all_predicted_temps, multioutput="raw_values"),
-            "RMSE": root_mean_squared_error(all_true_temps, all_predicted_temps, multioutput="raw_values"),
-            "ME": mean_error(all_true_temps, all_predicted_temps),
-            "total_loss": total_loss/len(dataloader.dataset)
+        mae_scores = list(mean_absolute_error(all_true_temps, all_predicted_temps, multioutput="raw_values"))
+        rmse_scores = list(root_mean_squared_error(all_true_temps, all_predicted_temps, multioutput="raw_values"))
+        me_scores = list(mean_error(all_true_temps, all_predicted_temps))
+    
+        final_metrics = {
+            'MAE': {"TMAX": mae_scores[0], "TMIN": mae_scores[1]},
+            'RMSE': {"TMAX": rmse_scores[0], "TMIN": rmse_scores[1]},
+            'ME': {"TMAX": me_scores[0], "TMIN": me_scores[1]},
         }
+
+        return final_metrics
     
     BATCH_SIZE = 64
-    EPOCHS = 10
+    EPOCHS = 15
 
     RNN_HIDDEN=128
     NN_HIDDEN=32
@@ -448,7 +489,8 @@ def train_lstm(train_dataset):
     for epoch_index in range(EPOCHS):
         train_one_epoch(rnn_model, loss_fn, device, train_dataloader, optimizer)
 
-    torch.save(rnn_model.state_dict(), os.path.join(SAVED_MODEL_PATH, "lstm_model.pt"))
+    os.makedirs(os.path.join(SAVED_MODEL_PATH, 'lstm'), exist_ok=True)
+    torch.save(rnn_model.state_dict(), os.path.join(SAVED_MODEL_PATH, 'lstm', "lstm_model.pt"))
 
     final_metrics = evaluate_model(rnn_model, loss_fn, device, train_dataloader)
 
@@ -466,18 +508,10 @@ def main() -> None:
     MEAN_TEMP = raw_ghcnd[["TMAX", "TMIN"]].mean()
     STD_TEMP = raw_ghcnd[["TMAX", "TMIN"]].std()
 
-    with open(os.path.join(SAVED_MODEL_PATH, "metadata.json"), 'w+') as fp:
-        metadata_json = {
-            "MEAN_TEMP": dict(MEAN_TEMP),
-            "STD_TEMP": dict(STD_TEMP),
-            "timestamp": datetime.now().isoformat()
-        }
-
-        json.dump(metadata_json, fp)
-
     print("Processing Datasets")
 
-    # print("- Completed Persistence")
+    persistence_train_set = persistence_ghcnd_dataset(raw_ghcnd)
+    print("- Completed Persistence")
 
     climatological_train_set = climatological_ghcnd_dataset(raw_ghcnd)
     print("- Completed Climatology")
@@ -493,7 +527,8 @@ def main() -> None:
 
     print("Training Models")
 
-    # print("- Completed Persistence (Nothing to Save)")
+    persistence_metrics = train_persistence(persistence_train_set)
+    print("- Completed Persistence (Nothing to Save)")
 
     climatological_metrics = train_climatological(climatological_train_set)
     print("- Completed Climatology")
@@ -509,7 +544,25 @@ def main() -> None:
 
     print("Results:")
     print(f"|{"Model":^18}|{"TMAX MAE":^16}|{"TMIN MAE":^16}|{"TMAX RMSE":^16}|{"TMIN RMSE":^16}|{"TMAX ME":^16}|{"TMIN ME":^16}|")
-    print(f"|{"Climatological":^18}|{climatological_metrics["MAE"][0]:^16.4e}|{climatological_metrics["MAE"][1]:^16.4e}|{climatological_metrics["RMSE"][0]:^16.4e}|{climatological_metrics["RMSE"][1]:^16.4e}|{climatological_metrics["ME"][0]:^16.4e}|{climatological_metrics["ME"][1]:^16.4e}|")
-    print(f"|{"Linear":^18}|{linear_metrics["MAE"][0]:^16.4e}|{linear_metrics["MAE"][1]:^16.4e}|{linear_metrics["RMSE"][0]:^16.4e}|{linear_metrics["RMSE"][1]:^16.4e}|{linear_metrics["ME"][0]:^16.4e}|{linear_metrics["ME"][1]:^16.4e}|")
-    print(f"|{"XGBoost":^18}|{xgboost_metrics["MAE"][0]:^16.4e}|{xgboost_metrics["MAE"][1]:^16.4e}|{xgboost_metrics["RMSE"][0]:^16.4e}|{xgboost_metrics["RMSE"][1]:^16.4e}|{xgboost_metrics["ME"][0]:^16.4e}|{xgboost_metrics["ME"][1]:^16.4e}|")
-    print(f"|{"LSTM":^18}|{lstm_metrics["MAE"][0]:^16.4e}|{lstm_metrics["MAE"][1]:^16.4e}|{lstm_metrics["RMSE"][0]:^16.4e}|{lstm_metrics["RMSE"][1]:^16.4e}|{lstm_metrics["ME"][0]:^16.4e}|{lstm_metrics["ME"][1]:^16.4e}|")
+    print("-"*122)
+    print(f"|{"Persistence":^18}|{persistence_metrics["MAE"]["TMAX"]:^16.4e}|{persistence_metrics["MAE"]["TMIN"]:^16.4e}|{persistence_metrics["RMSE"]["TMAX"]:^16.4e}|{persistence_metrics["RMSE"]["TMIN"]:^16.4e}|{persistence_metrics["ME"]["TMAX"]:^16.4e}|{persistence_metrics["ME"]["TMIN"]:^16.4e}|")
+    print(f"|{"Climatological":^18}|{climatological_metrics["MAE"]["TMAX"]:^16.4e}|{climatological_metrics["MAE"]["TMIN"]:^16.4e}|{climatological_metrics["RMSE"]["TMAX"]:^16.4e}|{climatological_metrics["RMSE"]["TMIN"]:^16.4e}|{climatological_metrics["ME"]["TMAX"]:^16.4e}|{climatological_metrics["ME"]["TMIN"]:^16.4e}|")
+    print(f"|{"Linear":^18}|{linear_metrics["MAE"]["TMAX"]:^16.4e}|{linear_metrics["MAE"]["TMIN"]:^16.4e}|{linear_metrics["RMSE"]["TMAX"]:^16.4e}|{linear_metrics["RMSE"]["TMIN"]:^16.4e}|{linear_metrics["ME"]["TMAX"]:^16.4e}|{linear_metrics["ME"]["TMIN"]:^16.4e}|")
+    print(f"|{"XGBoost":^18}|{xgboost_metrics["MAE"]["TMAX"]:^16.4e}|{xgboost_metrics["MAE"]["TMIN"]:^16.4e}|{xgboost_metrics["RMSE"]["TMAX"]:^16.4e}|{xgboost_metrics["RMSE"]["TMIN"]:^16.4e}|{xgboost_metrics["ME"]["TMAX"]:^16.4e}|{xgboost_metrics["ME"]["TMIN"]:^16.4e}|")
+    print(f"|{"LSTM":^18}|{lstm_metrics["MAE"]["TMAX"]:^16.4e}|{lstm_metrics["MAE"]["TMIN"]:^16.4e}|{lstm_metrics["RMSE"]["TMAX"]:^16.4e}|{lstm_metrics["RMSE"]["TMIN"]:^16.4e}|{lstm_metrics["ME"]["TMAX"]:^16.4e}|{lstm_metrics["ME"]["TMIN"]:^16.4e}|")
+
+    with open(os.path.join(SAVED_MODEL_PATH, "metadata.json"), 'w+') as fp:
+        metadata_json = {
+            "MEAN_TEMP": dict(MEAN_TEMP),
+            "STD_TEMP": dict(STD_TEMP),
+            "timestamp": datetime.now().isoformat(),
+            "results": {
+                "persistence": None,
+                "climatological": climatological_metrics,
+                "linear": linear_metrics,
+                "xgboost": xgboost_metrics,
+                "lstm": lstm_metrics,
+            }
+        }
+
+        json.dump(metadata_json, fp)

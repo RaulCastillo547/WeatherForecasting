@@ -1,5 +1,5 @@
 [project]
-name = "model_training"
+name = "training"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -135,7 +135,7 @@ dependencies = [
 ]
 
 [project.scripts]
-model_training = "model_training:main"
+training = "training:main"
 
 [build-system]
 requires = ["uv_build>=0.13.9,<0.14.0"]

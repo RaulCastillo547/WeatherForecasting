@@ -1,25 +1,64 @@
-# Weather Forecasting
+# Weather Forecasting in Tampa International Airport (TPA)
+This project aims to create machine learning models that predict a day's daily high and low temperatures using information from the past 6 days. These models will be deployed within an etl pipeline that runs daily temperature predictions throughout 2027. Users can view the predictions in an associated web application.
 
-This project explores and compares statistical and machine-learning approaches for forecasting daily minimum and maximum temperatures at Tampa International Airport.
+## Project Overview
+### Goal
+The project's development is split into three main stages:
+- **Exploratory Data Analysis & Model Training:** Analyze bulk historical weather data from Tampa International Airport (TPA) to identify important features for predicting daily high and low temperatures. The data will then be used to train a series of baseline and ml models for daily high and low temperature prediction
+- **Data Engineering:** Create an ETL pipeline that collects recent temperature data from TPA and uses the previously defined models to create predictions for the current day's daily high and low temperatures. The etl pipeline script will run daily throughout 2027, with predictions and input data being stored in SQL databases.
+- **Web Development:** Create and deploy a web application that enables users to view daily temperature predictions made throughout 2027.
 
-The work is organized in two Jupyter notebooks:
+This project came out of a desire to practice "going beyond the jupyter notebook". I wanted to actually use the models I have trained in a deployed setting in addition to touch on skills related to Data Engineering (with ETL) and Software Engineering (with web development).
 
-- `notebooks/data_analysis.ipynb`: examines the NOAA GHCND data, NOAA Weather.gov observations, and OpenWeather observations.
-- `notebooks/model_baseline_training.ipynb`: creates baselines and trains and evaluates temperature forecasting models.
+Currently, I am wrapping up model training and will begin working on creating the ETL pipeline before starting on the final web application. 
 
-The reusable data-processing and model utilities used in the notebooks are in `notebooks/utils.py`. The package entry point in `src/model_training/` trains the models and saves their artifacts.
+### Data Sources
+This project makes use of two main data sources:
+1. `data/raw/GHCND_1980_to_2026.csv`: A csv file collected from NOAA's GHCNd database. Contains daily weather data from TPA from 1/1/1980-10/18/2026. Only the data from 1980-2025 was used during model training.
+2. [NOAA's weather.gov API](https://api.weather.gov/): A REST API offered by NOAA that provides realtime access to recent weather readings at TPA.
 
-## Data
+### File Structure
 
-Raw data is stored in `data/raw/`:
+```text
+WeatherPrediction/
+├── artifacts/                          # Latest production models and final training metrics
+├── data/                               # Training GHCND CSV and recent API call samples
+├── notebooks/
+│   ├── figures/                        # Figures generated from model_baseline_training.ipynb
+│   ├── data_analysis.ipynb             # Exploratory data analysis
+│   ├── model_baseline_training.ipynb   # Model analysis over train/validation/test splits
+│   │                          
+│   └── utils.py                        # Utilities for model_baseline_training.ipynb
+├── src/
+│   └── weather_forecasting/
+│       └── model_training/             # Scripts for training saved models
+├── new_README.md
+├── pyproject.toml
+└── requirements.txt
+```
 
-- `GHCND_1980_to_2026.csv` - daily NOAA GHCND observations for Tampa International Airport, primarily containing the `TMAX` and `TMIN` targets.
-- `weather_gov_data.csv` - observations collected from the NOAA Weather.gov API.
-- `open_weather_data.csv` - recent forecast or observation data collected from the OpenWeather API.
+## EDA / Model Training Methodology
 
-The model pipeline uses daily GHCND temperatures from 1980 through 2025. Missing temperatures are time interpolated. Temperature values are normalized using the training-period mean and standard deviation.
+### Data Analysis / Feature Engineering
+My EDA of `GHCND_1980_to_2026.csv` revealed a strong correlation between the daily high (TMAX) and low (TMIN) temperatures of previous days to the current day's daily high and low temperatures.
 
-The chronological splits used for experimentation are:
+There was also seasonality in the daily high and low temperatures as the year shifts between Spring, Summer, Fall, and Winter seasons.
+
+To capture these insights as features for my ML models, I created lag features from TMAX/TMIN spanning the last 6 days (the maximum span NOAA's API goes back to) and generated fourier features over a period of 365 days for the current and last 6 days.
+
+### Models / Baselines Evaluated
+In `model_baseline_training.ipynb`, I evaluated 2 baseline models and 3 machine learning models across a train, validation, and test set split.
+
+#### Baseline Models
+- **Climatological:** Predicts a day's high and low temperatures based on the average high and low temperatures seen on that day of the year across the training set
+- **Persistence:** Predicts a day's high and low temperatures based on the high and low temperatures of the previous days
+
+#### Machine Learning Models
+- **Linear Regression:** Finds the linear relationship between a day's high and low temperatures with the day's current fourier feature value, the high and low temperatures of the last 6 days, and fourier features of the last 6 days
+- **XGBoost Regressor:** Uses an ensemble of decision trees to model nonlinear relationships between current day fourier features, lagged-fourier features, and lagged-temperature features and the day's high and low temperatures.
+- **LSTM:** Uses an LSTM layer to learn patterns in daily high and low temperatures and fourier features over the last 6 days. The final LSTM layer's hidden output is then concatenated with the current day's fourier features to serve as inputs to a dense neural network that predicts the day's high and low temperatures
+
+### Train / Validation / Test Split
 
 | Split | Years |
 |---|---|
@@ -27,82 +66,75 @@ The chronological splits used for experimentation are:
 | Validation | 2011-2017 |
 | Test | 2018-2025 |
 
-This prevents future observations from leaking into model training.
+### Key Results
 
-## Features
+This project measured model performance in terms of MAE (to get the average temperature deviation), ME (to detect tendencies to under- or over-predict temperatures), and RMSE (to give a measure of model fit in models trained via MSE). I also analyzed the percent at which the ml models' MAE scored improved upon the persitence and climatological baselines' MAE scores.
 
-The models use a combination of:
+Each ML model substantially improved upon the climatological baseline across each metric in both high and low temperature prediction. This is likely due to the climatological model failing to account for higher temperatures appearing after the training set period. Improvements upon the persistence baseline were more modest, highlighting the predictive power of previous day temperatures on next day temperatures.
 
-- Previous six days of `TMAX`
-- Previous six days of `TMIN`
-- Calendar day-of-year
-- Sine and cosine Fourier calendar features
-- Lagged Fourier features for the linear and tree-based models
+Below are some plots highlighting the most important results of model training. More figures can be found in the `notebook/figures/`.
 
-The RNN/LSTM pipeline uses six-day sequences containing temperature and Fourier features.
+#### MAE Across Models & Baselines
+![MAE metric plot](notebooks/figures/metric_plots/model_MAE_comparison.png)
 
-## Models
+#### ME Across Models & Baselines
+![ME metric plot](notebooks/figures/metric_plots/model_ME_comparison.png)
 
-The project compares the following approaches:
+#### RMSE Across Models & Baselines
+![RMSE metric plot](notebooks/figures/metric_plots/model_RMSE_comparison.png)
 
-| Model | Description |
-|---|---|
-| Persistence baseline | Predicts the next day to have the previous day's temperatures |
-| Climatological baseline | Predicts the mean temperature for each day of the year |
-| Linear regression | Uses lagged temperatures and seasonal Fourier features |
-| XGBoost | Uses lagged temperatures, day-of-year, and Fourier features |
-| LSTM | Uses a six-day sequence with recurrent and seasonal inputs |
+#### Percent Improvement Against Climatological's MAE
 
-Models are evaluated using mean absolute error (MAE), root mean squared error (RMSE), and mean error (ME), reported separately for `TMAX` and `TMIN`.
+![Climatological Baseline Plot](notebooks/figures/baseline_plots/baseline_skill_climatological.png)
 
-## Saved Artifacts
+#### Percent Improvement Against Persistence's MAE
 
-The `saved_models/` directory contains:
+![Persistence Baseline Plot](notebooks/figures/baseline_plots/baseline_skill_persistence.png)
 
-- `climatological_model.csv`
-- `linear_model.joblib`
-- `xgbregressor_model.json`
-- `lstm_model.pt`
-- `weather_linear_model.artifact.joblib`
-- `metadata.json`, including temperature normalization values
+#### Performance over 2025
 
-## Setup
+![2025 Performance](notebooks/figures/prediction_plots/test_2025_model_predictions.png)
 
-This project requires Python 3.14 or later. The recommended setup uses `uv`:
+## ETL / Backend
+- This section is work in progress
 
-```powershell
+## Setup / Scripts
+### Setting Up Local Environment
+This project requires Python 3.14 or later. The recommend setup uses `uv`:
+```
 uv sync
 ```
 
-Alternatively, install the packages from `requirements.txt`:
-
-```powershell
+Alternatively, you may create a venv and install used packages from `requirements.txt`:
+```
 python -m venv .venv
-.\\.venv\\Scripts\\Activate.ps1
+./.venv/Scripts/activate
 python -m pip install -r requirements.txt
 ```
 
-## Reproducing Training
+### Reproducing Production Training Results
+This repository offers a python-based cli command for retraining production models. This won't be used during deployment, but is provided for replicability
 
-Train all saved models from the project root:
-
-```powershell
-uv run model_training
+On `uv`, run:
+```
+uv run training
+```
+Alternatively, on standard Python, run while in your venv:
+```
+training
 ```
 
-The command reads `data/raw/GHCND_1980_to_2026.csv`, processes the data, and writes model files and normalization metadata to `saved_models/`.
+### Running the Notebooks
+To review work done during EDA and model training, you may open a jupyter lab instance.
 
-## Running the Notebooks
-
-Start Jupyter Lab:
-
-```powershell
+On `uv`, run:
+```
 uv run jupyter lab
 ```
 
-Then open:
+Alternatively, on standard Python, run while in your venv:
+```
+jupyter lab
+```
 
-1. `notebooks/data_analysis.ipynb`
-2. `notebooks/model_baseline_training.ipynb`
-
-Keep the repository root as the working directory when running notebook cells that use relative paths such as `../data/raw/...`.
+Then open any of the notebooks provided in `notebooks/`.

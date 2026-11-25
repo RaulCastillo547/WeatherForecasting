@@ -1,7 +1,7 @@
 [project]
-name = "training"
+name = "weather-forecasting"
 version = "0.1.0"
-description = "Add your description here"
+description = "An application that predicts the current date's high and low temperatures over 2027"
 readme = "README.md"
 authors = [
     { name = "Raul", email = "morales7258@gmail.com" }
@@ -135,7 +135,7 @@ dependencies = [
 ]
 
 [project.scripts]
-training = "training:main"
+training = "weather_forecasting.model_training:main"
 
 [build-system]
 requires = ["uv_build>=0.13.9,<0.14.0"]

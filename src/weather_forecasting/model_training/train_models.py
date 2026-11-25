@@ -496,6 +496,7 @@ def train_lstm(train_dataset):
 
     return final_metrics
 
+
 def main() -> None:
     set_seed(SEED)
 

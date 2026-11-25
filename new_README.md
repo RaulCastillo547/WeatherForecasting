@@ -73,25 +73,25 @@ This project measured model performance in terms of MAE (to get the average temp
 Each ML model substantially improved upon the climatological baseline across each metric in both high and low temperature prediction. This is likely due to the climatological models underpredicting temperatures given that training set years were likely colder than test set years. Improvements upon the persistence baseline were more modest, highlighting the predictive power of previous day temperatures on next day temperatures.
 
 #### MAE Across Models & Baselines
-![MAE metric plot](notebooks\figures\metric_plots\model_MAE_comparison.png)
+![MAE metric plot](notebooks/figures/metric_plots/model_MAE_comparison.png)
 
 #### ME Across Models & Baselines
-![ME metric plot](notebooks\figures\metric_plots\model_ME_comparison.png)
+![ME metric plot](notebooks/figures/metric_plots/model_ME_comparison.png)
 
 #### RMSE Across Models & Baselines
-![RMSE metric plot](notebooks\figures\metric_plots\model_RMSE_comparison.png)
+![RMSE metric plot](notebooks/figures/metric_plots/model_RMSE_comparison.png)
 
 #### Percent Improvement Against Climatological's MAE
 
-![Climatological Baseline Plot](notebooks\figures\baseline_plots\baseline_skill_climatological.png)
+![Climatological Baseline Plot](notebooks/figures/baseline_plots/baseline_skill_climatological.png)
 
 #### Percent Improvement Against Persistence's MAE
 
-![Persistence Baseline Plot](notebooks\figures\baseline_plots\baseline_skill_persistence.png)
+![Persistence Baseline Plot](notebooks/figures/baseline_plots/baseline_skill_persistence.png)
 
 #### Performance over 2025
 
-![2025 Performance](notebooks\figures\prediction_plots\test_2025_model_predictions.png)
+![2025 Performance](notebooks/figures/prediction_plots/test_2025_model_predictions.png)
 
 ## ETL / Backend
 - This section is work in progress
